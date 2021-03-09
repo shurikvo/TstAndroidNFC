@@ -60,12 +60,6 @@ public class MainActivity extends AppCompatActivity {
     //----------------------------------------------------------------------------------------------
     @Override
     protected void onResume() {
-        /*super.onResume();
-        assert nfcAdapter != null;
-        //nfcAdapter.enableForegroundDispatch(context,pendingIntent,
-        //                                    intentFilterArray,
-        //                                    techListsArray)
-        nfcAdapter.enableForegroundDispatch(this,pendingIntent,null,null);*/
 
         super.onResume();
         if (nfcAdapter != null) {
