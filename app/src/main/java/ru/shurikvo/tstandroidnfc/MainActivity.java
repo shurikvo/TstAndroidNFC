@@ -2,7 +2,9 @@ package ru.shurikvo.tstandroidnfc;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.app.AlertDialog;
 import android.app.PendingIntent;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
@@ -12,6 +14,7 @@ import android.nfc.tech.MifareUltralight;
 import android.nfc.tech.NdefFormatable;
 import android.nfc.tech.NfcA;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
@@ -24,18 +27,32 @@ public class MainActivity extends AppCompatActivity {
 
     private String messageInfo;
 
+    private AlertDialog mDialog;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        mDialog = new AlertDialog.Builder(this).setNeutralButton("Ok", null).create();
+
         nfcAdapter = NfcAdapter.getDefaultAdapter(this);
+        if (nfcAdapter == null) {
+            showMessage(R.string.error, R.string.no_nfc);
+            finish();
+            return;
+        }
         pendingIntent = PendingIntent.getActivity(this,0,
                 new Intent(this,this.getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),0);
     }
 
-    public void showInfo() {
+    private void showMessage(int title, int message) {
+        mDialog.setTitle(title);
+        mDialog.setMessage(getText(message));
+        mDialog.show();
+    }
 
+    public void showInfo() {
         TextView messageText = (TextView) findViewById(R.id.messageText);
         messageText.setText(messageInfo);
     }
@@ -43,12 +60,20 @@ public class MainActivity extends AppCompatActivity {
     //----------------------------------------------------------------------------------------------
     @Override
     protected void onResume() {
-        super.onResume();
+        /*super.onResume();
         assert nfcAdapter != null;
         //nfcAdapter.enableForegroundDispatch(context,pendingIntent,
         //                                    intentFilterArray,
         //                                    techListsArray)
-        nfcAdapter.enableForegroundDispatch(this,pendingIntent,null,null);
+        nfcAdapter.enableForegroundDispatch(this,pendingIntent,null,null);*/
+
+        super.onResume();
+        if (nfcAdapter != null) {
+            if (!nfcAdapter.isEnabled()) {
+                showWirelessSettingsDialog();
+            }
+            nfcAdapter.enableForegroundDispatch(this, pendingIntent, null, null);
+        }
     }
 
     protected void onPause() {
@@ -65,6 +90,24 @@ public class MainActivity extends AppCompatActivity {
         super.onNewIntent(intent);
         setIntent(intent);
         resolveIntent(intent);
+    }
+
+    private void showWirelessSettingsDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setMessage(R.string.nfc_disabled);
+        builder.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialogInterface, int i) {
+                Intent intent = new Intent(Settings.ACTION_WIRELESS_SETTINGS);
+                startActivity(intent);
+            }
+        });
+        builder.setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialogInterface, int i) {
+                finish();
+            }
+        });
+        builder.create().show();
+        return;
     }
 
     private void resolveIntent(Intent intent) {
