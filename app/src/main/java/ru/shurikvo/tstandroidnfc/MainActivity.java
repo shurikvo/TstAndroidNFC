@@ -6,8 +6,11 @@ import android.app.PendingIntent;
 import android.content.Intent;
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
+import android.nfc.tech.IsoDep;
 import android.nfc.tech.MifareClassic;
 import android.nfc.tech.MifareUltralight;
+import android.nfc.tech.NdefFormatable;
+import android.nfc.tech.NfcA;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -31,7 +34,7 @@ public class MainActivity extends AppCompatActivity {
                 new Intent(this,this.getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),0);
     }
 
-    public void showInfo(View view) {
+    public void showInfo() {
 
         TextView messageText = (TextView) findViewById(R.id.messageText);
         messageText.setText(messageInfo);
@@ -58,6 +61,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onNewIntent(Intent intent) {
+        messageInfo = "========== New Intent:\n";
         super.onNewIntent(intent);
         setIntent(intent);
         resolveIntent(intent);
@@ -70,17 +74,20 @@ public class MainActivity extends AppCompatActivity {
                 || NfcAdapter.ACTION_NDEF_DISCOVERED.equals(action)) {
             Tag tag = (Tag) intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
             assert tag != null;
+            messageInfo += "---------- Tag:\n" + tag.toString();
             byte[] payload = detectTagData(tag).getBytes();
+            showInfo();
         }
     }
 
     private String detectTagData(Tag tag) {
         StringBuilder sb = new StringBuilder();
         byte[] id = tag.getId();
-        sb.append("ID (hex): ").append(toHex(id)).append('\n');
-        sb.append("ID (reversed hex): ").append(toReversedHex(id)).append('\n');
-        sb.append("ID (dec): ").append(toDec(id)).append('\n');
-        sb.append("ID (reversed dec): ").append(toReversedDec(id)).append('\n');
+        messageInfo += "\n---------- Tag Data:";
+        sb.append("UID (hex): ").append(toHex(id).toUpperCase()).append('\n');
+        sb.append("UID (reversed hex): ").append(toReversedHex(id).toUpperCase()).append('\n');
+        sb.append("UID (dec): ").append(toDec(id)).append('\n');
+        sb.append("UID (reversed dec): ").append(toReversedDec(id)).append('\n');
 
         String prefix = "android.nfc.tech.";
         sb.append("Technologies: ");
@@ -92,6 +99,7 @@ public class MainActivity extends AppCompatActivity {
         sb.delete(sb.length() - 2, sb.length());
 
         for (String tech : tag.getTechList()) {
+            sb.append("\n[" + tech + "]");
             if (tech.equals(MifareClassic.class.getName())) {
                 sb.append('\n');
                 String type = "Unknown";
@@ -108,6 +116,9 @@ public class MainActivity extends AppCompatActivity {
                             break;
                         case MifareClassic.TYPE_PRO:
                             type = "Pro";
+                            break;
+                        case MifareClassic.TYPE_UNKNOWN:
+                            type = "Unknown";
                             break;
                     }
                     sb.append("Mifare Classic type: ");
@@ -144,9 +155,37 @@ public class MainActivity extends AppCompatActivity {
                 sb.append("Mifare Ultralight type: ");
                 sb.append(type);
             }
+
+            if (tech.equals(NfcA.class.getName())) {
+                sb.append('\n');
+                NfcA nfcATag = NfcA.get(tag);
+
+                byte[] bAtqa = nfcATag.getAtqa();
+                sb.append("ATQA: ").append(toHex(bAtqa).toUpperCase()).append('\n');
+                /*for (byte byteChar : bAtqa)
+                    sb.append(String.format("%02X ", byteChar));
+                sb.append('\n');*/
+
+                short nSak = nfcATag.getSak();
+                sb.append(String.format("SAK: %02X", nSak));
+            }
+
+            if (tech.equals(NdefFormatable.class.getName())) {
+                sb.append('\n');
+                NdefFormatable ndefFormatableTag = NdefFormatable.get(tag);
+
+                sb.append("Connected: "+ndefFormatableTag.isConnected()).append('\n');
+            }
+
+            if (tech.equals(IsoDep.class.getName())) {
+                sb.append('\n');
+                IsoDep isoDepTag = IsoDep.get(tag);
+
+                sb.append("Connected: "+isoDepTag.isConnected()).append('\n');
+            }
         }
         Log.v("test",sb.toString());
-        messageInfo = sb.toString();
+        messageInfo += "\n" + sb.toString();
         return sb.toString();
     }
 
